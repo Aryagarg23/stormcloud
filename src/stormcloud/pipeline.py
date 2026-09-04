@@ -658,6 +658,21 @@ def _cosine(left: list[float], right: list[float]) -> float:
     return numerator / denominator if denominator else 0
 
 
+def _distinct_graph_peers(
+    source_id: uuid.UUID, peers: list[Embedding]
+) -> list[Embedding]:
+    """Keep the newest embedding for each other graph subject."""
+
+    seen: set[uuid.UUID] = set()
+    result: list[Embedding] = []
+    for peer in peers:
+        if peer.subject_id == source_id or peer.subject_id in seen:
+            continue
+        seen.add(peer.subject_id)
+        result.append(peer)
+    return result
+
+
 def process_graph(session: Session, event: EventEnvelope) -> None:
     embedding = session.get(Embedding, uuid.UUID(event.payload["embedding_id"]))
     if not embedding:
@@ -667,9 +682,11 @@ def process_graph(session: Session, event: EventEnvelope) -> None:
             Embedding.subject_type == embedding.subject_type,
             Embedding.kind == embedding.kind,
             Embedding.model_profile == embedding.model_profile,
+            Embedding.subject_id != embedding.subject_id,
             Embedding.id != embedding.id,
-        )
+        ).order_by(Embedding.created_at.desc(), Embedding.id.desc())
     ).all()
+    peers = _distinct_graph_peers(embedding.subject_id, peers)
     scored = sorted(
         ((_cosine(list(embedding.vector), list(peer.vector)), peer) for peer in peers),
         key=lambda row: row[0],
