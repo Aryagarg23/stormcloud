@@ -375,9 +375,6 @@ export function GradingPage() {
           Processed signals will appear in the ungraded rail for the entire research team.
         </EmptyState>
       )}
-      <p className="grading-footnote">
-        Grades are shared with every workspace member. Changes retain editor and revision provenance.
-      </p>
     </>
   );
 }

@@ -8,13 +8,19 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from stormcloud.models import Role
-from stormcloud.schemas import GradeArticleInput, HighlightCreate, OperationView
+from stormcloud.schemas import CommentCreate, GradeArticleInput, HighlightCreate, OperationView
 from stormcloud.security import hash_password, require_admin, token_hash, verify_password
 
 
 def test_highlight_schema_rejects_non_forward_range() -> None:
     with pytest.raises(ValidationError, match="end_offset must be greater"):
         HighlightCreate(start_offset=5, end_offset=5, text_verbatim="x")
+
+
+def test_comment_schema_trims_and_rejects_blank_text() -> None:
+    assert CommentCreate(body="  useful context  ").body == "useful context"
+    with pytest.raises(ValidationError, match="Comment cannot be empty"):
+        CommentCreate(body="   ")
 
 
 @pytest.mark.parametrize("grade", [1, 2, 3, 4, None])

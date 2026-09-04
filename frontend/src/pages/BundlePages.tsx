@@ -72,30 +72,30 @@ export function BundlePage() {
       />
       <Pipeline status={bundle.status} />
       <div className="detail-grid bundle-detail">
-        <Panel title="Bundle topology" label={<DataLabel kind="human" />}>
+        <Panel title="Sources" label={<DataLabel kind="human" />}>
           <ol className={"topology " + (bundle.ordered ? "ordered" : "")}>
             {[...bundle.items].sort((a, b) => a.position - b.position).map((item, index, sorted) => (
               <li key={item.id || item.signal_id || index}>
                 <BundleNode item={item} />
                 {bundle.ordered && index < sorted.length - 1 && (
-                  <div className="next-edge" aria-label="Human NEXT edge"><span>NEXT</span><b aria-hidden="true">v</b></div>
+                  <div className="next-edge" aria-label="Next source"><span>then</span><b aria-hidden="true">↓</b></div>
                 )}
               </li>
             ))}
           </ol>
         </Panel>
         <aside className="detail-aside">
-          <Panel title="Evidence readiness" label={<DataLabel kind="machine" />}>
-            <p className="muted">Bundle evidence is generated only after every member signal has usable evidence.</p>
+          <Panel title="Source status" label={<DataLabel kind="machine" />}>
+            <p className="muted">All sources must finish before the bundle is ready.</p>
             <div className="member-statuses">
               {bundle.items.map((item, index) => (
                 <div key={item.id || index}><span>Item {item.position + 1}</span><StatusBadge status={item.signal?.status || "accepted"} /></div>
               ))}
             </div>
           </Panel>
-          <Panel title="Derived artifacts">
-            <div className="metric"><strong>{bundle.evidence_snapshots?.length ?? 0}</strong><span>Evidence revisions</span></div>
-            <div className="metric"><strong>{bundle.embeddings?.length ?? 0}</strong><span>Bundle embeddings</span></div>
+          <Panel title="Summary">
+            <div className="metric"><strong>{bundle.evidence_snapshots?.length ?? 0}</strong><span>Saved versions</span></div>
+            <div className="metric"><strong>{bundle.embeddings?.length ?? 0}</strong><span>Search indexes</span></div>
             <div className="metric"><strong>{bundle.neighbors?.length ?? 0}</strong><span>Similar bundles</span></div>
           </Panel>
         </aside>

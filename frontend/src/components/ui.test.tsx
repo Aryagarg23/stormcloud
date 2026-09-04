@@ -2,8 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { DataLabel, Pipeline, StatusBadge } from "./ui";
 
-describe("evidence language", () => {
-  it("keeps provenance categories explicit", () => {
+describe("researcher-facing language", () => {
+  it("uses plain data-source labels", () => {
     render(
       <>
         <DataLabel kind="human" />
@@ -11,16 +11,16 @@ describe("evidence language", () => {
         <DataLabel kind="machine" />
       </>,
     );
-    expect(screen.getByText("Human input")).toBeInTheDocument();
-    expect(screen.getByText("Source evidence")).toBeInTheDocument();
-    expect(screen.getByText("Machine-derived data")).toBeInTheDocument();
+    expect(screen.getByText("Researcher")).toBeInTheDocument();
+    expect(screen.getByText("Article")).toBeInTheDocument();
+    expect(screen.getByText("AI")).toBeInTheDocument();
   });
 
   it("shows the complete asynchronous pipeline", () => {
     render(<Pipeline status="embedding" />);
     expect(screen.getByLabelText("Processing: embedding")).toBeInTheDocument();
-    expect(screen.getByText("accepted").closest("li")).toHaveClass("done");
-    expect(screen.getByText("embedding").closest("li")).toHaveClass("current");
+    expect(screen.getByText("queued").closest("li")).toHaveClass("done");
+    expect(screen.getByText("index").closest("li")).toHaveClass("current");
     expect(screen.getByText("ready").closest("li")).toHaveClass("waiting");
   });
 

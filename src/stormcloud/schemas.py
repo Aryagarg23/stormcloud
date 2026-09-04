@@ -191,6 +191,30 @@ class HighlightView(ORM):
     created_at: datetime
 
 
+class CommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=10000)
+
+    @model_validator(mode="after")
+    def non_blank(self):
+        self.body = self.body.strip()
+        if not self.body:
+            raise ValueError("Comment cannot be empty")
+        return self
+
+
+class CommentAuthor(ORM):
+    id: UUID
+    email: EmailStr
+
+
+class SignalCommentView(ORM):
+    id: UUID
+    signal_id: UUID
+    body: str
+    author: CommentAuthor
+    created_at: datetime
+
+
 class EdgeView(ORM):
     id: UUID
     source_type: str

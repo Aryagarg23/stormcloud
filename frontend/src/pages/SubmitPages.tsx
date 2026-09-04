@@ -50,12 +50,12 @@ export function SubmitSignalPage() {
             <label>
               Source URL
               <input type="url" placeholder="https://example.com/research" required value={url} onChange={(event) => setUrl(event.target.value)} />
-              <small>Stormcloud will resolve and deduplicate the canonical document without merging your signal.</small>
+              <small>Existing articles are reused; this signal stays separate.</small>
             </label>
             <label>
-              Verbatim description
+              Signal
               <textarea rows={8} required minLength={3} placeholder="What did you notice, and why does it matter?" value={description} onChange={(event) => setDescription(event.target.value)} />
-              <small>{description.length} characters - preserved exactly as entered</small>
+              <small>{description.length} characters</small>
             </label>
             <div className="form-actions">
               <Link to="/" className="button">Cancel</Link>
@@ -63,15 +63,6 @@ export function SubmitSignalPage() {
             </div>
           </form>
         </Panel>
-        <aside className="explainer">
-          <p className="eyebrow">What happens next</p>
-          <ol>
-            <li><strong>Fetch</strong><span>Capture an immutable version of the source.</span></li>
-            <li><strong>Enrich</strong><span>Extract deterministic NLP features and exact-span evidence.</span></li>
-            <li><strong>Embed</strong><span>Create separate vectors for your input, evidence, and source.</span></li>
-            <li><strong>Connect</strong><span>Build similarity edges to related signals.</span></li>
-          </ol>
-        </aside>
       </div>
     </>
   );
@@ -146,7 +137,7 @@ export function SubmitBundlePage() {
           </label>
           <label className="switch-row">
             <input type="checkbox" checked={ordered} onChange={(event) => setOrdered(event.target.checked)} />
-            <span><strong>Order carries meaning</strong><small>Create explicit NEXT links between adjacent items.</small></span>
+            <span><strong>Ordered</strong><small>Keep this source order.</small></span>
           </label>
         </Panel>
 

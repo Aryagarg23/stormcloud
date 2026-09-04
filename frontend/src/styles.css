@@ -610,3 +610,36 @@ label small { color: var(--muted); font-size: .75rem; }
   .signal-card .card-footer,
   .bundle-card .card-footer { grid-column: 2; grid-row: 1; }
 }
+.highlight-card small { display: none; }
+
+.comments-layout { max-width: 820px; }
+.comment-form {
+  display: grid;
+  gap: .75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #deded8;
+}
+.comment-list { display: grid; }
+.comment {
+  padding: .9rem 0;
+  border-bottom: 1px solid #deded8;
+}
+.comment:last-child { border-bottom: 0; }
+.comment header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .4rem;
+  font-size: .875rem;
+}
+.comment time {
+  color: var(--muted);
+  font-size: .75rem;
+  white-space: nowrap;
+}
+.comment p {
+  margin: 0;
+  color: #2a2a27;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

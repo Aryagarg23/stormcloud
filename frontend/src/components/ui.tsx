@@ -2,7 +2,21 @@ import type { PropsWithChildren, ReactNode } from "react";
 import type { PipelineStatus } from "../lib/types";
 
 export function StatusBadge({ status }: { status: string }) {
-  return <span className={"status status-" + status}>{status.replaceAll("_", " ")}</span>;
+  const labels: Record<string, string> = {
+    accepted: "queued",
+    pending: "queued",
+    fetching: "getting article",
+    enriching: "analyzing",
+    embedding: "indexing",
+    graphing: "finding related",
+    succeeded: "complete",
+    dead_lettered: "needs attention",
+  };
+  return (
+    <span className={"status status-" + status}>
+      {labels[status] || status.replaceAll("_", " ")}
+    </span>
+  );
 }
 
 export function DataLabel({
@@ -11,9 +25,9 @@ export function DataLabel({
   kind: "human" | "source" | "machine";
 }) {
   const labels = {
-    human: "Human input",
-    source: "Source evidence",
-    machine: "Machine-derived data",
+    human: "Researcher",
+    source: "Article",
+    machine: "AI",
   };
   return <span className={"data-label data-label-" + kind}>{labels[kind]}</span>;
 }
@@ -114,6 +128,16 @@ export const pipelineStages: PipelineStatus[] = [
   "ready",
 ];
 
+const pipelineLabels: Record<PipelineStatus, string> = {
+  accepted: "queued",
+  fetching: "get article",
+  enriching: "analyze",
+  embedding: "index",
+  graphing: "find related",
+  ready: "ready",
+  failed: "failed",
+};
+
 export function Pipeline({ status }: { status: PipelineStatus }) {
   const current = pipelineStages.indexOf(status);
   return (
@@ -126,7 +150,7 @@ export function Pipeline({ status }: { status: PipelineStatus }) {
         return (
           <li className={state} key={stage}>
             <span className="pipeline-dot" aria-hidden="true" />
-            <span>{stage}</span>
+            <span>{pipelineLabels[stage]}</span>
           </li>
         );
       })}

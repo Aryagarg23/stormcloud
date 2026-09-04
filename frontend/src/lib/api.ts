@@ -9,6 +9,7 @@ import type {
   Operation,
   PageResult,
   Role,
+  SignalComment,
   SignalDetail,
   SignalSummary,
   User,
@@ -156,12 +157,13 @@ interface BackendEdge {
 
 async function loadSignalDetail(id: string): Promise<SignalDetail> {
   const signal = await request<SignalDetail>("/signals/" + id);
-  const [document, highlights, neighbors] = await Promise.all([
+  const [document, highlights, neighbors, comments] = await Promise.all([
     signal.document_version_id
       ? request<BackendDocument>("/documents/" + signal.document_version_id)
       : Promise.resolve(undefined),
     request<BackendHighlight[]>("/signals/" + id + "/highlights"),
     request<BackendEdge[]>("/signals/" + id + "/neighbors"),
+    request<SignalComment[]>("/signals/" + id + "/comments"),
   ]);
   return {
     ...signal,
@@ -185,6 +187,7 @@ async function loadSignalDetail(id: string): Promise<SignalDetail> {
       active: !item.tombstoned_at,
       created_at: item.created_at,
     })),
+    comments,
     neighbors: neighbors.map((edge) => ({
       id: edge.id,
       target_id: edge.target_id,
@@ -246,6 +249,11 @@ export const api = {
       }),
     archive: (id: string) => request<void>("/signals/" + id + "/archive", { method: "POST" }),
     neighbors: (id: string) => request<NonNullable<SignalDetail["neighbors"]>>("/signals/" + id + "/neighbors"),
+    addComment: (id: string, body: string) =>
+      request<SignalComment>("/signals/" + id + "/comments", {
+        method: "POST",
+        body: { body },
+      }),
     addHighlight: (id: string, start: number, end: number, text: string) =>
       request<AsyncAccepted>("/signals/" + id + "/highlights", {
         method: "POST",

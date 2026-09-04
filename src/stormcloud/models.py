@@ -136,6 +136,19 @@ class Signal(Timestamps, Base):
     )
 
 
+class SignalComment(Timestamps, Base):
+    """A team-shared comment on a signal."""
+
+    __tablename__ = "signal_comments"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_id)
+    signal_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("signals.id", ondelete="CASCADE"), index=True
+    )
+    body: Mapped[str] = mapped_column(Text)
+    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    author: Mapped[User] = relationship()
+
+
 class ArticleGrade(Timestamps, Base):
     """Current team-wide grade for a signal."""
 

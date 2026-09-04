@@ -32,6 +32,7 @@ from .models import (
     RefreshSession,
     Role,
     Signal,
+    SignalComment,
     StageStatus,
     User,
     new_id,
@@ -40,6 +41,7 @@ from .schemas import (
     Accepted,
     BundleCreate,
     BundleView,
+    CommentCreate,
     DocumentContent,
     EdgeView,
     HighlightCreate,
@@ -51,6 +53,7 @@ from .schemas import (
     LoginRequest,
     OperationView,
     RefreshRequest,
+    SignalCommentView,
     SignalCreate,
     SignalView,
     StageView,
@@ -558,6 +561,38 @@ def get_document(version_id: UUID, user: CurrentUser, db: DB):
         segments=row.segments,
         text=text,
     )
+
+
+@router.get("/signals/{signal_id}/comments", response_model=list[SignalCommentView])
+def list_comments(signal_id: UUID, user: CurrentUser, db: DB):
+    if not db.get(Signal, signal_id):
+        fail(404, "Signal not found")
+    return list(
+        db.scalars(
+            select(SignalComment)
+            .where(SignalComment.signal_id == signal_id)
+            .options(selectinload(SignalComment.author))
+            .order_by(SignalComment.created_at, SignalComment.id)
+        )
+    )
+
+
+@router.post(
+    "/signals/{signal_id}/comments", response_model=SignalCommentView, status_code=201
+)
+def add_comment(signal_id: UUID, body: CommentCreate, user: CurrentUser, db: DB):
+    if not db.get(Signal, signal_id):
+        fail(404, "Signal not found")
+    comment = SignalComment(
+        signal_id=signal_id,
+        body=body.body,
+        author_id=user.id,
+        author=user,
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return comment
 
 
 @router.get("/signals/{signal_id}/highlights", response_model=list[HighlightView])

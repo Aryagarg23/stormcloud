@@ -77,6 +77,14 @@ export interface StageAttempt {
   created_at?: string;
 }
 
+export interface SignalComment {
+  id: string;
+  signal_id: string;
+  body: string;
+  author: { id: string; email: string };
+  created_at: string;
+}
+
 export interface Highlight {
   id: string;
   kind: "human" | "auto";
@@ -164,6 +172,7 @@ export interface SignalDetail extends SignalSummary {
   researcher_extraction?: ResearcherExtraction;
   nlp_artifact?: NlpArtifact;
   highlights?: Highlight[];
+  comments?: SignalComment[];
   evidence_snapshots?: EvidenceSnapshot[];
   embeddings?: EmbeddingInfo[];
   neighbors?: SimilarityEdge[];

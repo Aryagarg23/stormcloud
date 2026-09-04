@@ -1,4 +1,5 @@
 import {
+  type FormEvent,
   type MouseEvent as ReactMouseEvent,
   useEffect,
   useMemo,
@@ -20,13 +21,13 @@ import { api } from "../lib/api";
 import { useResource } from "../hooks/useResource";
 import type { Highlight, SignalDetail } from "../lib/types";
 
-type Tab = "overview" | "source" | "provenance";
+type Tab = "summary" | "annotations" | "comments" | "history";
 
 export function SignalPage() {
   const { id = "" } = useParams();
   const resource = useResource(() => api.signals.get(id), [id]);
   const { data: signal, error, loading, reload } = resource;
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("summary");
   const [mutationError, setMutationError] = useState<unknown>();
   const [retrying, setRetrying] = useState(false);
 
@@ -77,15 +78,22 @@ export function SignalPage() {
         </div>
       )}
       <div className="tabs" role="tablist" aria-label="Signal detail">
-        {(["overview", "source", "provenance"] as Tab[]).map((value) => (
+        {([
+          ["summary", "Summary"],
+          ["annotations", "Annotations"],
+          ["comments", "Comments"],
+          ["history", "History"],
+        ] as Array<[Tab, string]>).map(([value, label]) => (
           <button key={value} role="tab" aria-selected={tab === value} onClick={() => setTab(value)}>
-            {value === "source" ? "Source & highlights" : value[0].toUpperCase() + value.slice(1)}
+            {label}
+            {value === "comments" && signal.comments?.length ? ` (${signal.comments.length})` : ""}
           </button>
         ))}
       </div>
-      {tab === "overview" && <Overview signal={signal} />}
-      {tab === "source" && <SourceView signal={signal} reload={reload} />}
-      {tab === "provenance" && <Provenance signal={signal} />}
+      {tab === "summary" && <Overview signal={signal} />}
+      {tab === "annotations" && <SourceView signal={signal} reload={reload} />}
+      {tab === "comments" && <Comments signal={signal} reload={reload} />}
+      {tab === "history" && <History signal={signal} />}
     </>
   );
 }
@@ -94,12 +102,12 @@ function Overview({ signal }: { signal: SignalDetail }) {
   return (
     <div className="detail-grid">
       <div className="detail-main">
-        <Panel title="Researcher observation" label={<DataLabel kind="human" />}>
+        <Panel title="Signal" label={<DataLabel kind="human" />}>
           <blockquote className="verbatim">{signal.description_verbatim}</blockquote>
-          <p className="metadata">Submitted {formatDate(signal.created_at)} - preserved verbatim</p>
+          <p className="metadata">Submitted {formatDate(signal.created_at)}</p>
         </Panel>
-        <Panel title="Constrained extraction" label={<DataLabel kind="machine" />}>
-          {!signal.researcher_extraction ? <p className="muted">Waiting for extraction.</p> : (
+        <Panel title="Key details" label={<DataLabel kind="machine" />}>
+          {!signal.researcher_extraction ? <p className="muted">Waiting for analysis.</p> : (
             <div className="extraction">
               <FactGroup title="Claims" values={signal.researcher_extraction.claims?.map((claim) => claim.text)} />
               <FactGroup title="Entities" values={signal.researcher_extraction.entities?.map((entity) => entity.text + (entity.type ? " - " + entity.type : ""))} />
@@ -108,7 +116,7 @@ function Overview({ signal }: { signal: SignalDetail }) {
           )}
         </Panel>
         <Panel title="Related signals" label={<DataLabel kind="machine" />}>
-          {!signal.neighbors?.length ? <p className="muted">No similarity edges have been materialized yet.</p> : (
+          {!signal.neighbors?.length ? <p className="muted">No related signals yet.</p> : (
             <div className="neighbor-list">
               {signal.neighbors.map((edge, index) => (
                 <Link to={"/signals/" + (edge.target_signal_id || edge.target_id)} className="neighbor" key={edge.id || index}>
@@ -121,17 +129,17 @@ function Overview({ signal }: { signal: SignalDetail }) {
         </Panel>
       </div>
       <aside className="detail-aside">
-        <Panel title="Evidence state">
-          <Metric label="Evidence revisions" value={signal.evidence_snapshots?.length ?? 0} />
-          <Metric label="Active highlights" value={signal.highlights?.filter((item) => item.active !== false && !item.suppressed).length ?? 0} />
-          <Metric label="Embeddings" value={signal.embeddings?.length ?? 0} />
-          <Metric label="Similarity edges" value={signal.neighbors?.length ?? 0} />
+        <Panel title="Summary">
+          <Metric label="Saved versions" value={signal.evidence_snapshots?.length ?? 0} />
+          <Metric label="Annotations" value={signal.highlights?.filter((item) => item.active !== false && !item.suppressed).length ?? 0} />
+          <Metric label="Search indexes" value={signal.embeddings?.length ?? 0} />
+          <Metric label="Related signals" value={signal.neighbors?.length ?? 0} />
         </Panel>
-        <Panel title="Document identity" label={<DataLabel kind="source" />}>
+        <Panel title="Article record" label={<DataLabel kind="source" />}>
           <dl className="definition-list">
-            <div><dt>Document</dt><dd>{signal.document_id || "Pending"}</dd></div>
+            <div><dt>Record</dt><dd>{signal.document_id || "Pending"}</dd></div>
             <div><dt>Version</dt><dd>{signal.document_version?.id || "Pending"}</dd></div>
-            <div><dt>Content hash</dt><dd className="mono">{signal.document_version?.content_hash?.slice(0, 18) || "Pending"}</dd></div>
+            <div><dt>Content ID</dt><dd className="mono">{signal.document_version?.content_hash?.slice(0, 18) || "Pending"}</dd></div>
           </dl>
         </Panel>
       </aside>
@@ -147,6 +155,65 @@ function FactGroup({ title, values }: { title: string; values?: string[] }) {
 
 function Metric({ label, value }: { label: string; value: number }) {
   return <div className="metric"><strong>{value}</strong><span>{label}</span></div>;
+}
+
+function Comments({ signal, reload }: { signal: SignalDetail; reload: () => Promise<void> }) {
+  const [body, setBody] = useState("");
+  const [error, setError] = useState<unknown>();
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const comment = body.trim();
+    if (!comment) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await api.signals.addComment(signal.id, comment);
+      setBody("");
+      await reload();
+    } catch (reason) {
+      setError(reason);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="comments-layout">
+      <Panel title="Comments">
+        {Boolean(error) && <ErrorNotice error={error} />}
+        <form className="comment-form" onSubmit={submit}>
+          <label>
+            Add a comment
+            <textarea
+              rows={3}
+              maxLength={10000}
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+            />
+          </label>
+          <div className="form-actions">
+            <button className="button button-primary" disabled={busy || !body.trim()}>
+              {busy ? "Adding..." : "Add comment"}
+            </button>
+          </div>
+        </form>
+        <div className="comment-list" aria-live="polite">
+          {!signal.comments?.length && <p className="muted">No comments.</p>}
+          {signal.comments?.map((comment) => (
+            <article className="comment" key={comment.id}>
+              <header>
+                <strong>{comment.author.email}</strong>
+                <time>{formatDate(comment.created_at)}</time>
+              </header>
+              <p>{comment.body}</p>
+            </article>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
 }
 
 function SourceView({ signal, reload }: { signal: SignalDetail; reload: () => Promise<void> }) {
@@ -196,13 +263,13 @@ function SourceView({ signal, reload }: { signal: SignalDetail; reload: () => Pr
   }
 
   if (!signal.document_version) {
-    return <Panel><p className="muted">The immutable document version will appear after fetching completes.</p></Panel>;
+    return <Panel><p className="muted">The article will appear after processing.</p></Panel>;
   }
 
   return (
     <div className="source-layout">
       <Panel
-        title={signal.document_version.title || "Normalized source"}
+        title={signal.document_version.title || "Article"}
         label={<DataLabel kind="source" />}
         className="reader-panel"
       >
@@ -210,11 +277,11 @@ function SourceView({ signal, reload }: { signal: SignalDetail; reload: () => Pr
           <span>Retrieved {formatDate(signal.document_version.retrieved_at)}</span>
           <span>{signal.document_version.media_type || "text"}</span>
         </div>
-        <div className="reader-instruction">Select text to create an exact-span human highlight.</div>
+        <div className="reader-instruction">Select text to add an annotation.</div>
         {selection && (
           <div className="selection-toolbar">
             <span>{selection.text.slice(0, 48)}{selection.text.length > 48 ? "..." : ""}</span>
-            <button className="button button-primary button-small" disabled={busy} onMouseDown={(event) => void addHighlight(event)}>Highlight selection</button>
+            <button className="button button-primary button-small" disabled={busy} onMouseDown={(event) => void addHighlight(event)}>Add annotation</button>
           </div>
         )}
         <div ref={container} className="source-text" onMouseUp={captureSelection}>
@@ -223,17 +290,17 @@ function SourceView({ signal, reload }: { signal: SignalDetail; reload: () => Pr
       </Panel>
       <aside className="highlight-rail">
         {Boolean(error) && <ErrorNotice error={error} />}
-        <p className="eyebrow">Evidence spans</p>
-        {!highlights.length && <p className="muted">No highlights yet.</p>}
+        <p className="eyebrow">Annotations</p>
+        {!highlights.length && <p className="muted">No annotations.</p>}
         {highlights.map((highlight) => (
           <article className={"highlight-card " + highlight.kind} key={highlight.id}>
-            <div><DataLabel kind={highlight.kind === "human" ? "human" : "machine"} />{highlight.suppressed && <span className="status">suppressed</span>}</div>
+            <div><DataLabel kind={highlight.kind === "human" ? "human" : "machine"} />{highlight.suppressed && <span className="status">hidden</span>}</div>
             <q>{highlight.text}</q>
             <small>Characters {highlight.start_offset}{highlight.end_offset}</small>
             {highlight.kind === "human" ? (
               <button className="text-button danger" disabled={busy} onClick={() => void mutate(() => api.signals.removeHighlight(signal.id, highlight.id))}>Remove</button>
             ) : (
-              <button className="text-button" disabled={busy} onClick={() => void mutate(() => api.signals.suppressAuto(signal.id, highlight.id, !highlight.suppressed))}>{highlight.suppressed ? "Restore" : "Suppress"}</button>
+              <button className="text-button" disabled={busy} onClick={() => void mutate(() => api.signals.suppressAuto(signal.id, highlight.id, !highlight.suppressed))}>{highlight.suppressed ? "Show" : "Hide"}</button>
             )}
           </article>
         ))}
@@ -266,11 +333,11 @@ function HighlightedText({ text, highlights }: { text: string; highlights: Highl
   return <>{nodes}</>;
 }
 
-function Provenance({ signal }: { signal: SignalDetail }) {
+function History({ signal }: { signal: SignalDetail }) {
   return (
     <div className="detail-grid">
-      <Panel title="Immutable evidence snapshots" label={<DataLabel kind="machine" />}>
-        {!signal.evidence_snapshots?.length ? <p className="muted">No snapshots yet.</p> : (
+      <Panel title="Saved versions" label={<DataLabel kind="machine" />}>
+        {!signal.evidence_snapshots?.length ? <p className="muted">No saved versions yet.</p> : (
           <ol className="timeline">
             {[...signal.evidence_snapshots].reverse().map((snapshot) => (
               <li key={snapshot.id}>
@@ -286,18 +353,18 @@ function Provenance({ signal }: { signal: SignalDetail }) {
         )}
       </Panel>
       <aside className="detail-aside">
-        <Panel title="Vector artifacts">
-          {!signal.embeddings?.length ? <p className="muted">No embeddings yet.</p> : signal.embeddings.map((embedding) => (
+        <Panel title="Search index">
+          {!signal.embeddings?.length ? <p className="muted">Not indexed yet.</p> : signal.embeddings.map((embedding) => (
             <div className="artifact-row" key={embedding.id}>
               <span><strong>{embedding.kind.replaceAll("_", " ")}</strong><small>{embedding.model_profile}</small></span>
               <code>{embedding.dimensions}d</code>
             </div>
           ))}
         </Panel>
-        <Panel title="Processing attempts">
-          {!signal.stage_attempts?.length ? <p className="muted">No attempt history returned.</p> : signal.stage_attempts.map((attempt) => (
+        <Panel title="Activity">
+          {!signal.stage_attempts?.length ? <p className="muted">No activity yet.</p> : signal.stage_attempts.map((attempt) => (
             <div className="artifact-row" key={attempt.id}>
-              <span><strong>{attempt.stage}</strong><small>Attempt {attempt.attempt}</small></span>
+              <span><strong>{attempt.stage}</strong><small>Run {attempt.attempt}</small></span>
               <StatusBadge status={attempt.status} />
             </div>
           ))}
