@@ -1,7 +1,10 @@
 import type {
   AsyncAccepted,
+  ArticleGrade,
+  ArticleGradeCard,
   AuthTokens,
   Bundle,
+  GradingBoard,
   Invitation,
   Operation,
   PageResult,
@@ -106,8 +109,89 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return (await response.json()) as T;
 }
 
+async function requestBlob(path: string, retryAuth = true): Promise<Blob> {
+  const headers = new Headers();
+  const access = token(ACCESS_KEY);
+  if (access) headers.set("Authorization", "Bearer " + access);
+  const response = await fetch(API_BASE + path, {
+    headers,
+    credentials: "include",
+  });
+  if (response.status === 401 && retryAuth && await refreshAccess()) {
+    return requestBlob(path, false);
+  }
+  if (!response.ok) throw await decodeError(response);
+  return response.blob();
+}
+
 function normalizePage<T>(value: PageResult<T> | T[]): PageResult<T> {
   return Array.isArray(value) ? { items: value } : value;
+}
+
+interface BackendDocument {
+  id: string;
+  canonical_url: string;
+  media_type: string;
+  retrieved_at: string;
+  content_sha256: string;
+  text: string;
+}
+
+interface BackendHighlight {
+  id: string;
+  kind: "human" | "automatic";
+  start_offset: number;
+  end_offset: number;
+  text_verbatim: string;
+  tombstoned_at?: string | null;
+  created_at?: string;
+}
+
+interface BackendEdge {
+  id: string;
+  target_id: string;
+  kind: string;
+  weight?: number | null;
+}
+
+async function loadSignalDetail(id: string): Promise<SignalDetail> {
+  const signal = await request<SignalDetail>("/signals/" + id);
+  const [document, highlights, neighbors] = await Promise.all([
+    signal.document_version_id
+      ? request<BackendDocument>("/documents/" + signal.document_version_id)
+      : Promise.resolve(undefined),
+    request<BackendHighlight[]>("/signals/" + id + "/highlights"),
+    request<BackendEdge[]>("/signals/" + id + "/neighbors"),
+  ]);
+  return {
+    ...signal,
+    canonical_url: document?.canonical_url ?? signal.canonical_url,
+    document_version: document
+      ? {
+          id: document.id,
+          canonical_url: document.canonical_url,
+          media_type: document.media_type,
+          content_hash: document.content_sha256,
+          normalized_text: document.text,
+          retrieved_at: document.retrieved_at,
+        }
+      : undefined,
+    highlights: highlights.map((item) => ({
+      id: item.id,
+      kind: item.kind === "automatic" ? "auto" : "human",
+      start_offset: item.start_offset,
+      end_offset: item.end_offset,
+      text: item.text_verbatim,
+      active: !item.tombstoned_at,
+      created_at: item.created_at,
+    })),
+    neighbors: neighbors.map((edge) => ({
+      id: edge.id,
+      target_id: edge.target_id,
+      score: edge.weight ?? 0,
+      edge_type: edge.kind,
+    })),
+  };
 }
 
 export const api = {
@@ -148,7 +232,7 @@ export const api = {
   signals: {
     list: (query = "") =>
       request<PageResult<SignalSummary> | SignalSummary[]>("/signals" + query).then(normalizePage),
-    get: (id: string) => request<SignalDetail>("/signals/" + id),
+    get: loadSignalDetail,
     create: (url: string, description: string) =>
       request<AsyncAccepted>("/signals", {
         method: "POST",
@@ -161,12 +245,12 @@ export const api = {
         idempotencyKey: crypto.randomUUID(),
       }),
     archive: (id: string) => request<void>("/signals/" + id + "/archive", { method: "POST" }),
-    neighbors: (id: string) => request<{ items: SignalDetail["neighbors"] }>("/signals/" + id + "/neighbors"),
+    neighbors: (id: string) => request<NonNullable<SignalDetail["neighbors"]>>("/signals/" + id + "/neighbors"),
     addHighlight: (id: string, start: number, end: number, text: string) =>
       request<AsyncAccepted>("/signals/" + id + "/highlights", {
         method: "POST",
         idempotencyKey: crypto.randomUUID(),
-        body: { start_offset: start, end_offset: end, text },
+        body: { start_offset: start, end_offset: end, text_verbatim: text },
       }),
     removeHighlight: (signalId: string, highlightId: string) =>
       request<AsyncAccepted>("/signals/" + signalId + "/highlights/" + highlightId, {
@@ -177,6 +261,20 @@ export const api = {
         "/signals/" + signalId + "/auto-highlights/" + highlightId + "/suppress",
         { method: suppressed ? "POST" : "DELETE" },
       ),
+  },
+  grading: {
+    board: () => request<GradingBoard>("/articles/grading-board"),
+    update: (signalId: string, grade: ArticleGrade | null, expectedRevision?: string) =>
+      request<ArticleGradeCard>("/signals/" + signalId + "/grade", {
+        method: "PUT",
+        body: {
+          grade,
+          ...(expectedRevision ? { expected_revision: expectedRevision } : {}),
+        },
+        idempotencyKey: crypto.randomUUID(),
+      }),
+    thumbnail: (signalId: string) =>
+      requestBlob("/signals/" + signalId + "/thumbnail"),
   },
   bundles: {
     list: () => request<PageResult<Bundle> | Bundle[]>("/bundles").then(normalizePage),
@@ -214,6 +312,12 @@ export const api = {
       request<void>("/admin/invitations/" + id, { method: "DELETE" }),
     listUsers: () => request<PageResult<User> | User[]>("/admin/users").then(normalizePage),
     updateUser: (id: string, patch: { role?: Role; active?: boolean }) =>
-      request<User>("/admin/users/" + id, { method: "PATCH", body: patch }),
-  },
+      request<User>("/admin/users/" + id, {
+        method: "PATCH",
+        body: {
+          ...(patch.role ? { role: patch.role } : {}),
+          ...(patch.active === undefined ? {} : { is_active: patch.active }),
+        },
+      }),
+    },
 };

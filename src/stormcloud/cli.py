@@ -1,6 +1,6 @@
-import os
 import typer
 from sqlalchemy import func, select
+
 from .config import get_settings
 from .db import session_scope
 from .model_registry import ModelRegistry
@@ -10,16 +10,19 @@ from .storage import ObjectStore
 
 app = typer.Typer(no_args_is_help=True)
 
+
 @app.command("init-buckets")
 def init_buckets():
     ObjectStore().ensure_buckets()
     typer.echo("S3 buckets are ready")
+
 
 @app.command("validate-config")
 def validate_config():
     settings = get_settings()
     registry = ModelRegistry.load(settings.model_config_path, settings.prompt_root)
     typer.echo(f"model config valid: {registry.config_hash}")
+
 
 @app.command("bootstrap-admin")
 def bootstrap_admin(
@@ -35,6 +38,7 @@ def bootstrap_admin(
         db.add(user)
         db.flush()
         typer.echo(f"created administrator {user.email} ({user.id})")
+
 
 if __name__ == "__main__":
     app()

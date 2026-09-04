@@ -1,4 +1,6 @@
 .env
+.env.production
+bootstrap-credentials.txt
 .venv/
 __pycache__/
 *.py[cod]

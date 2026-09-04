@@ -6,6 +6,7 @@ profiles:
     api_key_env: GEMMA_API_KEY
     model: "${GEMMA_MODEL:-dhruvil237/gemma-4-26B-A4B-it-W4A16}"
     temperature: 0.0
+    structured_output: json_object
     top_p: 1.0
     max_tokens: 2048
     timeout_seconds: 120

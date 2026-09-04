@@ -5,6 +5,7 @@ import { Loading } from "./ui";
 const nav = [
   { to: "/", label: "Signals", glyph: "[]", end: true },
   { to: "/submit", label: "New signal", glyph: "+" },
+  { to: "/grading", label: "Article grading", glyph: "1-4" },
   { to: "/bundles", label: "Bundles", glyph: "::" },
 ];
 

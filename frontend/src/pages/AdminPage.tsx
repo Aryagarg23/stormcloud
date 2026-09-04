@@ -91,7 +91,7 @@ export function AdminPage() {
                 <select aria-label={"Role for " + member.email} value={member.role} disabled={member.id === user.id} onChange={(event) => void api.admin.updateUser(member.id, { role: event.target.value as Role }).then(users.reload)}>
                   <option value="member">Member</option><option value="admin">Admin</option>
                 </select>
-                <label className="compact-toggle"><input type="checkbox" checked={member.active !== false} disabled={member.id === user.id} onChange={(event) => void api.admin.updateUser(member.id, { active: event.target.checked }).then(users.reload)} /> Active</label>
+                <label className="compact-toggle"><input type="checkbox" checked={member.is_active !== false} disabled={member.id === user.id} onChange={(event) => void api.admin.updateUser(member.id, { active: event.target.checked }).then(users.reload)} /> Active</label>
               </div>
             </div>
           ))}

@@ -7,6 +7,7 @@ import { OperationPage } from "./pages/OperationPage";
 import { SignalPage } from "./pages/SignalPage";
 import { BundlePage, BundlesPage } from "./pages/BundlePages";
 import { AdminPage } from "./pages/AdminPage";
+import { GradingPage } from "./pages/GradingPage";
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="submit" element={<SubmitSignalPage />} />
           <Route path="signals/:id" element={<SignalPage />} />
           <Route path="operations/:id" element={<OperationPage />} />
+          <Route path="grading" element={<GradingPage />} />
           <Route path="bundles" element={<BundlesPage />} />
           <Route path="bundles/new" element={<SubmitBundlePage />} />
           <Route path="bundles/:id" element={<BundlePage />} />

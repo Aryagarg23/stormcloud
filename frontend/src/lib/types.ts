@@ -1,4 +1,36 @@
 export type Role = "admin" | "member";
+export type ArticleGrade = 1 | 2 | 3 | 4;
+export type GradeTierKey = "1" | "2" | "3" | "4";
+
+export interface ArticleGradeActor {
+  id: string;
+  email: string;
+}
+
+export interface ArticleGradeCard {
+  id: string;
+  url: string;
+  canonical_url?: string;
+  title: string;
+  thumbnail_url: string | null;
+  grade: ArticleGrade | null;
+  graded_by?: ArticleGradeActor | null;
+  updated_by?: ArticleGradeActor | null;
+  updated_at: string;
+  revision: string;
+}
+
+export interface GradingBoard {
+  ungraded: ArticleGradeCard[];
+  tiers: Record<GradeTierKey, ArticleGradeCard[]>;
+  revision: string;
+}
+
+export interface GradeArticleInput {
+  grade: ArticleGrade | null;
+  expected_revision?: string;
+}
+
 export type PipelineStatus =
   | "accepted"
   | "fetching"
@@ -13,6 +45,7 @@ export interface User {
   email: string;
   role: Role;
   active?: boolean;
+  is_active?: boolean;
   created_at?: string;
 }
 
@@ -114,6 +147,7 @@ export interface SimilarityEdge {
 export interface SignalSummary {
   id: string;
   url: string;
+  document_version_id?: string;
   canonical_url?: string;
   description_verbatim: string;
   status: PipelineStatus;

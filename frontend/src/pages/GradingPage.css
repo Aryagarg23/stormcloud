@@ -1,0 +1,380 @@
+.grading-summary {
+  display: grid;
+  grid-template-columns: auto 1fr minmax(160px, 32%);
+  align-items: center;
+  gap: .55rem 1rem;
+  margin: -1rem 0 1.25rem;
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+.grading-summary strong {
+  color: var(--ink);
+  font: 600 1.25rem "Newsreader", Georgia, serif;
+}
+
+.grading-progress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.grading-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), var(--blue));
+  transition: width .22s ease;
+}
+
+.grading-notice {
+  min-height: 0;
+}
+
+.grade-drop-zone {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(14, 23, 20, .8);
+  transition: border-color .16s, background .16s, box-shadow .16s;
+}
+
+.grade-drop-zone.drag-active {
+  border-color: var(--green);
+  background: rgba(27, 53, 41, .76);
+  box-shadow: inset 0 0 0 1px #a2e6bd38, 0 0 28px #68d89512;
+}
+
+.ungraded-zone {
+  padding: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.grade-zone-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .8rem;
+}
+
+.grade-zone-heading .eyebrow {
+  margin-bottom: .16rem;
+}
+
+.grade-zone-heading h2 {
+  margin: 0;
+}
+
+.grade-count {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 .45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: #0c1412;
+  font: 500 .7rem "DM Mono", monospace;
+}
+
+.article-rail,
+.tier-cards {
+  display: flex;
+  gap: .75rem;
+  min-width: 0;
+  padding: .1rem .1rem .55rem;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline proximity;
+  scrollbar-color: #3f5951 transparent;
+  scrollbar-width: thin;
+}
+
+.article-rail {
+  min-height: 225px;
+}
+
+.tier-list {
+  display: grid;
+  gap: .65rem;
+}
+
+.tier {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  min-height: 208px;
+  overflow: hidden;
+}
+
+.tier-label {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-content: center;
+  gap: .75rem;
+  padding: 1rem;
+  border-right: 1px solid var(--line);
+}
+
+.tier-label > strong {
+  display: grid;
+  place-items: center;
+  grid-row: 1 / span 2;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  color: #07110b;
+  font: 700 1.7rem "Newsreader", Georgia, serif;
+}
+
+.tier-label h2 {
+  align-self: end;
+  margin: 0;
+  font-size: 1.12rem;
+}
+
+.tier-label p {
+  margin: .2rem 0 0;
+  color: var(--muted);
+  font-size: .66rem;
+  line-height: 1.35;
+}
+
+.tier-label .grade-count {
+  grid-column: 2;
+  align-self: start;
+  justify-self: start;
+  height: 22px;
+}
+
+.tier-4 .tier-label { background: linear-gradient(135deg, #4c8063, #182b22); }
+.tier-3 .tier-label { background: linear-gradient(135deg, #557c83, #19282a); }
+.tier-2 .tier-label { background: linear-gradient(135deg, #796948, #292319); }
+.tier-1 .tier-label { background: linear-gradient(135deg, #67494c, #281b1d); }
+.tier-4 .tier-label > strong { background: var(--green); }
+.tier-3 .tier-label > strong { background: var(--blue); }
+.tier-2 .tier-label > strong { background: var(--amber); }
+.tier-1 .tier-label > strong { background: #dd9998; }
+
+.tier-cards {
+  align-items: center;
+  padding: .75rem;
+}
+
+.grade-card {
+  position: relative;
+  flex: 0 0 210px;
+  width: 210px;
+  overflow: hidden;
+  scroll-snap-align: start;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  outline: 0;
+  background: #111b18;
+  box-shadow: 0 8px 24px #0003;
+  cursor: grab;
+  transition: transform .16s, border-color .16s, opacity .16s;
+}
+
+.grade-card:hover {
+  border-color: #58796f;
+  transform: translateY(-2px);
+}
+
+.grade-card:focus-visible {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px #93e7b22c, 0 8px 24px #0003;
+}
+
+.grade-card:active {
+  cursor: grabbing;
+}
+
+.grade-card.is-pending {
+  opacity: .68;
+  cursor: progress;
+}
+
+.grade-card-image,
+.grade-card-placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-bottom: 1px solid var(--line);
+  object-fit: cover;
+  background: linear-gradient(145deg, #1d312a, #0d1714);
+}
+
+.grade-card-placeholder {
+  display: grid;
+  place-items: center;
+  color: #698078;
+  font: 600 1.25rem "Newsreader", Georgia, serif;
+}
+
+.thumbnail-shimmer {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent 25%, #315146 45%, transparent 65%);
+  background-size: 220% 100%;
+  animation: thumbnail-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes thumbnail-shimmer {
+  to { background-position: -220% 0; }
+}
+
+.grade-card-body {
+  display: grid;
+  gap: .42rem;
+  padding: .7rem;
+}
+
+.grade-card-host {
+  overflow: hidden;
+  color: var(--muted);
+  font: .58rem "DM Mono", monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grade-card-title {
+  min-height: 2.5em;
+  overflow: hidden;
+  color: var(--ink);
+  font: 600 .92rem/1.25 "Newsreader", Georgia, serif;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.grade-card-title:hover {
+  color: var(--green);
+}
+
+.grade-controls {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: .28rem;
+  margin-top: .2rem;
+}
+
+.grade-controls button {
+  min-width: 0;
+  height: 29px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  background: #0b1311;
+  cursor: pointer;
+  font: 600 .67rem "DM Mono", monospace;
+}
+
+.grade-controls button:hover,
+.grade-controls button:focus-visible {
+  border-color: var(--green);
+  color: var(--ink);
+}
+
+.grade-controls button.selected {
+  border-color: var(--green);
+  color: #07110b;
+  background: var(--green);
+}
+
+.grade-controls button.ungrade {
+  grid-column: 5;
+  color: var(--amber);
+}
+
+.grade-card-saving {
+  position: absolute;
+  top: .45rem;
+  right: .45rem;
+  padding: .2rem .4rem;
+  border-radius: 999px;
+  color: var(--green);
+  background: #0b1411e8;
+  font-size: .58rem;
+}
+
+.grade-inline-empty {
+  display: grid;
+  place-items: center;
+  min-height: 110px;
+  padding: 1rem;
+  color: var(--muted);
+  text-align: center;
+  font-size: .76rem;
+}
+
+.tier > .grade-inline-empty {
+  min-height: 100%;
+}
+
+.grading-footnote {
+  margin: 1rem 0 0;
+  color: var(--muted);
+  font-size: .68rem;
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .grading-summary {
+    grid-template-columns: auto 1fr;
+  }
+
+  .grading-progress {
+    grid-column: 1 / -1;
+  }
+
+  .tier {
+    grid-template-columns: 1fr;
+  }
+
+  .tier-label {
+    grid-template-columns: 38px 1fr auto;
+    padding: .75rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tier-label > strong {
+    width: 36px;
+    height: 36px;
+    grid-row: 1;
+    font-size: 1.4rem;
+  }
+
+  .tier-label h2 {
+    align-self: center;
+  }
+
+  .tier-label p {
+    display: none;
+  }
+
+  .tier-label .grade-count {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .tier-cards {
+    min-height: 185px;
+  }
+
+  .grade-card {
+    flex-basis: 180px;
+    width: 180px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumbnail-shimmer {
+    animation: none;
+    background: #20352e;
+  }
+}

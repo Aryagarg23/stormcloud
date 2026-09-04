@@ -1,0 +1,3 @@
+[submodule "vendor/source-extractor"]
+	path = vendor/source-extractor
+	url = https://github.com/Aryagarg23/source-extractor.git

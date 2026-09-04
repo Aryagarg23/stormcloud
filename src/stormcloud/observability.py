@@ -1,24 +1,29 @@
 import logging
 import time
+
 import structlog
 from fastapi import FastAPI, Request
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from starlette.responses import Response
 
-REQUESTS = Counter("stormcloud_http_requests_total", "HTTP requests",
-                   ["method", "path", "status"])
-LATENCY = Histogram("stormcloud_http_request_seconds", "HTTP request latency",
-                    ["method", "path"])
+REQUESTS = Counter("stormcloud_http_requests_total", "HTTP requests", ["method", "path", "status"])
+LATENCY = Histogram("stormcloud_http_request_seconds", "HTTP request latency", ["method", "path"])
+
 
 def configure_logging(level: str) -> None:
     logging.basicConfig(level=level.upper(), format="%(message)s")
     structlog.configure(
-        processors=[structlog.contextvars.merge_contextvars,
-                    structlog.processors.TimeStamper(fmt="iso", utc=True),
-                    structlog.processors.add_log_level,
-                    structlog.processors.JSONRenderer()],
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.TimeStamper(fmt="iso", utc=True),
+            structlog.processors.add_log_level,
+            structlog.processors.JSONRenderer(),
+        ],
         wrapper_class=structlog.make_filtering_bound_logger(
-            getattr(logging, level.upper(), logging.INFO)))
+            getattr(logging, level.upper(), logging.INFO)
+        ),
+    )
+
 
 def install_observability(app: FastAPI) -> None:
     @app.middleware("http")

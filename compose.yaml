@@ -7,6 +7,13 @@ x-app: &app
   env_file: .env
   restart: unless-stopped
   networks: [stormcloud]
+  volumes: ["./config:/app/config:ro"]
+  healthcheck:
+    test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
+    interval: 15s
+    timeout: 3s
+    retries: 3
+    start_period: 10s
   depends_on:
     postgres: {condition: service_healthy}
     nats: {condition: service_healthy}
@@ -83,12 +90,24 @@ services:
   api:
     <<: *app
     profiles: [core, full, dev]
-    ports: ["${STORMCLOUD_API_PORT:-8080}:8080"]
+    ports: ["127.0.0.1:${STORMCLOUD_API_PORT:-8080}:8080"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     command: ["uvicorn", "stormcloud.main:app", "--host", "0.0.0.0", "--port", "8080"]
 
   model-gateway:
     <<: *app
     profiles: [core, full, dev]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8085/health/ready').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     command: ["uvicorn", "stormcloud.model_gateway:app", "--host", "0.0.0.0", "--port", "8085"]
 
   pipeline-controller:
@@ -100,6 +119,25 @@ services:
     <<: *worker
     profiles: [workers, full, dev]
     environment: {STORMCLOUD_WORKER_ROLE: fetch}
+
+  source-extractor:
+    build:
+      context: .
+      dockerfile: services/source-extractor/Dockerfile
+    image: stormcloud-source-extractor:0.1.0
+    profiles: [extractor, full, dev]
+    environment:
+      EXTRACTOR_INTERNAL_TOKEN: ${STORMCLOUD_FETCHER_TOKEN:?set STORMCLOUD_FETCHER_TOKEN}
+      EXTRACTOR_MAX_RESPONSE_BYTES: ${STORMCLOUD_FETCHER_MAX_BYTES:-20971520}
+      EXTRACTOR_MAX_NORMALIZED_BYTES: ${STORMCLOUD_FETCHER_MAX_BYTES:-10485760}
+      EXTRACTOR_MAX_RAW_CAPTURE_BYTES: ${STORMCLOUD_FETCHER_RAW_MAX_BYTES:-8388608}
+      SOURCE_EXTRACTOR_COMMIT: d0a11c923cac499cc651a0d219e3d47f4a0fa6b9
+    restart: unless-stopped
+    networks: [stormcloud]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
 
   nlp-worker:
     <<: *worker
@@ -134,14 +172,14 @@ services:
 
   mailpit:
     image: axllent/mailpit:v1.27.5
-    profiles: [dev]
+    profiles: [dev, mail]
     networks: [stormcloud]
-    ports: ["8025:8025"]
+    ports: ["127.0.0.1:8025:8025"]
     restart: unless-stopped
 
 networks:
   stormcloud:
-    name: stormcloud
+    name: ${STORMCLOUD_NETWORK_NAME:-stormcloud}
 
 volumes:
   postgres-data:
