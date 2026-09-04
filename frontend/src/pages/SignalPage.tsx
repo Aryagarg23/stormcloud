@@ -8,26 +8,23 @@ import {
 } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
-  DataLabel,
   ErrorNotice,
   formatDate,
   Loading,
-  PageHeader,
   Panel,
-  Pipeline,
   StatusBadge,
 } from "../components/ui";
 import { api } from "../lib/api";
 import { useResource } from "../hooks/useResource";
 import type { Highlight, SignalDetail } from "../lib/types";
 
-type Tab = "summary" | "annotations" | "comments" | "history";
+type Tab = "article" | "analysis" | "comments";
 
 export function SignalPage() {
   const { id = "" } = useParams();
   const resource = useResource(() => api.signals.get(id), [id]);
   const { data: signal, error, loading, reload } = resource;
-  const [tab, setTab] = useState<Tab>("summary");
+  const [tab, setTab] = useState<Tab>("article");
   const [mutationError, setMutationError] = useState<unknown>();
   const [retrying, setRetrying] = useState(false);
 
@@ -55,106 +52,106 @@ export function SignalPage() {
   if (error && !signal) return <ErrorNotice error={error} onRetry={() => void reload()} />;
   if (!signal) return null;
 
+  const tabs: Array<[Tab, string]> = [
+    ["article", "Article & annotations"],
+    ...(signal.researcher_extraction || signal.nlp_artifact
+      ? [["analysis", "Analysis"] as [Tab, string]]
+      : []),
+    ["comments", "Comments"],
+
+  ];
   return (
     <>
-      <PageHeader
-        eyebrow="Signal"
-        title={signal.title || signal.description_verbatim.slice(0, 110)}
-        description={signal.canonical_url || signal.url}
-        actions={
-          <div className="button-row">
-            <StatusBadge status={signal.status} />
-            <a className="button" href={signal.canonical_url || signal.url} target="_blank" rel="noreferrer">Open original</a>
-          </div>
-        }
-      />
-      <Pipeline status={signal.status} />
+      <header className="signal-record-header">
+        <div className="signal-record-meta">
+          <span>Submitted {formatDate(signal.created_at)}</span>
+          <StatusBadge status={signal.status} />
+        </div>
+        <h1>{signal.description_verbatim}</h1>
+        <div className="button-row">
+          <a className="button" href={signal.canonical_url || signal.url} target="_blank" rel="noreferrer">
+            Open article
+          </a>
+          {signal.status === "failed" && signal.failure?.retryable !== false && (
+            <button className="button" disabled={retrying} onClick={() => void retry()}>
+              {retrying ? "Retrying..." : "Retry"}
+            </button>
+          )}
+        </div>
+      </header>
+      {signal.status !== "ready" && signal.status !== "failed" && (
+        <p className="processing-note" role="status">
+          Processing continues in the background. This page updates automatically.
+        </p>
+      )}
       {Boolean(mutationError) && <ErrorNotice error={mutationError} />}
       {signal.failure && (
         <div className="error-notice" role="alert">
           <strong>{signal.failure.stage ? "Failed during " + signal.failure.stage : "Processing failed"}</strong>
           <span>{signal.failure.detail}</span>
-          {signal.failure.retryable !== false && <button className="button button-small" disabled={retrying} onClick={() => void retry()}>{retrying ? "Retrying..." : "Retry stage"}</button>}
         </div>
       )}
       <div className="tabs" role="tablist" aria-label="Signal detail">
-        {([
-          ["summary", "Summary"],
-          ["annotations", "Annotations"],
-          ["comments", "Comments"],
-          ["history", "History"],
-        ] as Array<[Tab, string]>).map(([value, label]) => (
+        {tabs.map(([value, label]) => (
           <button key={value} role="tab" aria-selected={tab === value} onClick={() => setTab(value)}>
             {label}
             {value === "comments" && signal.comments?.length ? ` (${signal.comments.length})` : ""}
           </button>
         ))}
       </div>
-      {tab === "summary" && <Overview signal={signal} />}
-      {tab === "annotations" && <SourceView signal={signal} reload={reload} />}
+      {tab === "article" && (
+        <>
+          <SourceView signal={signal} reload={reload} />
+          {Boolean(signal.neighbors?.length) && <RelatedSignals signal={signal} />}
+        </>
+      )}
+      {tab === "analysis" && <Analysis signal={signal} />}
       {tab === "comments" && <Comments signal={signal} reload={reload} />}
-      {tab === "history" && <History signal={signal} />}
     </>
   );
 }
 
-function Overview({ signal }: { signal: SignalDetail }) {
+function Analysis({ signal }: { signal: SignalDetail }) {
+  const extraction = signal.researcher_extraction;
+  const nlp = signal.nlp_artifact;
+  const features = nlp?.payload?.features ?? [];
+  const unique = (values: Array<string | undefined>) => [...new Set(values.filter((value): value is string => Boolean(value)))];
+  const groups = [
+    { title: "Claims", values: unique(extraction?.claims?.map((item) => item.text) ?? []) },
+    { title: "People & organizations", values: unique([...(nlp?.entities?.map((item) => item.text) ?? []), ...features.filter((item) => item.kind === "entity").map((item) => item.text)]) },
+    { title: "Dates", values: unique([...(extraction?.dates?.map((item) => item.text) ?? []), ...(nlp?.dates?.map((item) => item.text) ?? []), ...features.filter((item) => item.kind === "date").map((item) => item.text)]) },
+    { title: "Numbers", values: unique([...(extraction?.numbers?.map((item) => item.text) ?? []), ...(nlp?.numbers?.map((item) => item.text) ?? []), ...features.filter((item) => item.kind === "number").map((item) => item.text)]) },
+    { title: "Topics", values: unique(nlp?.noun_phrases ?? features.filter((item) => item.kind === "noun_phrase").map((item) => item.text)) },
+  ].filter((group) => group.values.length);
+
+  if (!groups.length) return <p className="muted">No structured findings were generated.</p>;
+
   return (
-    <div className="detail-grid">
-      <div className="detail-main">
-        <Panel title="Signal" label={<DataLabel kind="human" />}>
-          <blockquote className="verbatim">{signal.description_verbatim}</blockquote>
-          <p className="metadata">Submitted {formatDate(signal.created_at)}</p>
-        </Panel>
-        <Panel title="Key details" label={<DataLabel kind="machine" />}>
-          {!signal.researcher_extraction ? <p className="muted">Waiting for analysis.</p> : (
-            <div className="extraction">
-              <FactGroup title="Claims" values={signal.researcher_extraction.claims?.map((claim) => claim.text)} />
-              <FactGroup title="Entities" values={signal.researcher_extraction.entities?.map((entity) => entity.text + (entity.type ? " - " + entity.type : ""))} />
-              <FactGroup title="Numbers" values={signal.researcher_extraction.numbers?.map((number) => number.text)} />
-            </div>
-          )}
-        </Panel>
-        <Panel title="Related signals" label={<DataLabel kind="machine" />}>
-          {!signal.neighbors?.length ? <p className="muted">No related signals yet.</p> : (
-            <div className="neighbor-list">
-              {signal.neighbors.map((edge, index) => (
-                <Link to={"/signals/" + (edge.target_signal_id || edge.target_id)} className="neighbor" key={edge.id || index}>
-                  <span>{edge.title || "Related signal"}</span>
-                  <strong>{Math.round(edge.score * 100)}%</strong>
-                </Link>
-              ))}
-            </div>
-          )}
-        </Panel>
-      </div>
-      <aside className="detail-aside">
-        <Panel title="Summary">
-          <Metric label="Saved versions" value={signal.evidence_snapshots?.length ?? 0} />
-          <Metric label="Annotations" value={signal.highlights?.filter((item) => item.active !== false && !item.suppressed).length ?? 0} />
-          <Metric label="Search indexes" value={signal.embeddings?.length ?? 0} />
-          <Metric label="Related signals" value={signal.neighbors?.length ?? 0} />
-        </Panel>
-        <Panel title="Article record" label={<DataLabel kind="source" />}>
-          <dl className="definition-list">
-            <div><dt>Record</dt><dd>{signal.document_id || "Pending"}</dd></div>
-            <div><dt>Version</dt><dd>{signal.document_version?.id || "Pending"}</dd></div>
-            <div><dt>Content ID</dt><dd className="mono">{signal.document_version?.content_hash?.slice(0, 18) || "Pending"}</dd></div>
-          </dl>
-        </Panel>
-      </aside>
+    <div className="analysis-grid">
+      {groups.map((group) => (
+        <section key={group.title}>
+          <h2>{group.title}</h2>
+          <ul>{group.values.map((value) => <li key={value}>{value}</li>)}</ul>
+        </section>
+      ))}
     </div>
   );
 }
 
-function FactGroup({ title, values }: { title: string; values?: string[] }) {
+function RelatedSignals({ signal }: { signal: SignalDetail }) {
   return (
-    <div><h3>{title}</h3>{values?.length ? <ul className="tag-list">{values.map((value, index) => <li key={index}>{value}</li>)}</ul> : <p className="muted">None extracted</p>}</div>
+    <section className="related-signals">
+      <h2>Related signals</h2>
+      <div className="neighbor-list">
+        {signal.neighbors?.map((edge, index) => (
+          <Link to={"/signals/" + (edge.target_signal_id || edge.target_id)} className="neighbor" key={edge.id || index}>
+            <span>{edge.title || "Related signal"}</span>
+            <span>{Math.round(edge.score * 100)}% match</span>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
-}
-
-function Metric({ label, value }: { label: string; value: number }) {
-  return <div className="metric"><strong>{value}</strong><span>{label}</span></div>;
 }
 
 function Comments({ signal, reload }: { signal: SignalDetail; reload: () => Promise<void> }) {
@@ -222,7 +219,7 @@ function SourceView({ signal, reload }: { signal: SignalDetail; reload: () => Pr
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const text = signal.document_version?.normalized_text || "";
-  const highlights = signal.highlights ?? [];
+  const highlights = (signal.highlights ?? []).filter((highlight) => highlight.active !== false);
 
   function captureSelection() {
     const selected = window.getSelection();
@@ -270,13 +267,8 @@ function SourceView({ signal, reload }: { signal: SignalDetail; reload: () => Pr
     <div className="source-layout">
       <Panel
         title={signal.document_version.title || "Article"}
-        label={<DataLabel kind="source" />}
         className="reader-panel"
       >
-        <div className="reader-meta">
-          <span>Retrieved {formatDate(signal.document_version.retrieved_at)}</span>
-          <span>{signal.document_version.media_type || "text"}</span>
-        </div>
         <div className="reader-instruction">Select text to add an annotation.</div>
         {selection && (
           <div className="selection-toolbar">
@@ -294,9 +286,11 @@ function SourceView({ signal, reload }: { signal: SignalDetail; reload: () => Pr
         {!highlights.length && <p className="muted">No annotations.</p>}
         {highlights.map((highlight) => (
           <article className={"highlight-card " + highlight.kind} key={highlight.id}>
-            <div><DataLabel kind={highlight.kind === "human" ? "human" : "machine"} />{highlight.suppressed && <span className="status">hidden</span>}</div>
+            <div>
+              <span className="annotation-kind">{highlight.kind === "human" ? "Added by researcher" : "Suggested"}</span>
+              {highlight.suppressed && <span className="status">hidden</span>}
+            </div>
             <q>{highlight.text}</q>
-            <small>Characters {highlight.start_offset}{highlight.end_offset}</small>
             {highlight.kind === "human" ? (
               <button className="text-button danger" disabled={busy} onClick={() => void mutate(() => api.signals.removeHighlight(signal.id, highlight.id))}>Remove</button>
             ) : (
@@ -331,45 +325,4 @@ function HighlightedText({ text, highlights }: { text: string; highlights: Highl
   });
   nodes.push(text.slice(cursor));
   return <>{nodes}</>;
-}
-
-function History({ signal }: { signal: SignalDetail }) {
-  return (
-    <div className="detail-grid">
-      <Panel title="Saved versions" label={<DataLabel kind="machine" />}>
-        {!signal.evidence_snapshots?.length ? <p className="muted">No saved versions yet.</p> : (
-          <ol className="timeline">
-            {[...signal.evidence_snapshots].reverse().map((snapshot) => (
-              <li key={snapshot.id}>
-                <div><strong>Revision {snapshot.revision ?? ""}</strong><span>{formatDate(snapshot.created_at)}</span></div>
-                <dl className="definition-list compact">
-                  <div><dt>Recipe</dt><dd>{snapshot.recipe_version || ""}</dd></div>
-                  <div><dt>Prompt hash</dt><dd className="mono">{snapshot.prompt_hash?.slice(0, 16) || ""}</dd></div>
-                  <div><dt>Config hash</dt><dd className="mono">{snapshot.config_hash?.slice(0, 16) || ""}</dd></div>
-                </dl>
-              </li>
-            ))}
-          </ol>
-        )}
-      </Panel>
-      <aside className="detail-aside">
-        <Panel title="Search index">
-          {!signal.embeddings?.length ? <p className="muted">Not indexed yet.</p> : signal.embeddings.map((embedding) => (
-            <div className="artifact-row" key={embedding.id}>
-              <span><strong>{embedding.kind.replaceAll("_", " ")}</strong><small>{embedding.model_profile}</small></span>
-              <code>{embedding.dimensions}d</code>
-            </div>
-          ))}
-        </Panel>
-        <Panel title="Activity">
-          {!signal.stage_attempts?.length ? <p className="muted">No activity yet.</p> : signal.stage_attempts.map((attempt) => (
-            <div className="artifact-row" key={attempt.id}>
-              <span><strong>{attempt.stage}</strong><small>Run {attempt.attempt}</small></span>
-              <StatusBadge status={attempt.status} />
-            </div>
-          ))}
-        </Panel>
-      </aside>
-    </div>
-  );
 }

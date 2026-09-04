@@ -129,72 +129,8 @@ function normalizePage<T>(value: PageResult<T> | T[]): PageResult<T> {
   return Array.isArray(value) ? { items: value } : value;
 }
 
-interface BackendDocument {
-  id: string;
-  canonical_url: string;
-  media_type: string;
-  retrieved_at: string;
-  content_sha256: string;
-  text: string;
-}
-
-interface BackendHighlight {
-  id: string;
-  kind: "human" | "automatic";
-  start_offset: number;
-  end_offset: number;
-  text_verbatim: string;
-  tombstoned_at?: string | null;
-  created_at?: string;
-}
-
-interface BackendEdge {
-  id: string;
-  target_id: string;
-  kind: string;
-  weight?: number | null;
-}
-
 async function loadSignalDetail(id: string): Promise<SignalDetail> {
-  const signal = await request<SignalDetail>("/signals/" + id);
-  const [document, highlights, neighbors, comments] = await Promise.all([
-    signal.document_version_id
-      ? request<BackendDocument>("/documents/" + signal.document_version_id)
-      : Promise.resolve(undefined),
-    request<BackendHighlight[]>("/signals/" + id + "/highlights"),
-    request<BackendEdge[]>("/signals/" + id + "/neighbors"),
-    request<SignalComment[]>("/signals/" + id + "/comments"),
-  ]);
-  return {
-    ...signal,
-    canonical_url: document?.canonical_url ?? signal.canonical_url,
-    document_version: document
-      ? {
-          id: document.id,
-          canonical_url: document.canonical_url,
-          media_type: document.media_type,
-          content_hash: document.content_sha256,
-          normalized_text: document.text,
-          retrieved_at: document.retrieved_at,
-        }
-      : undefined,
-    highlights: highlights.map((item) => ({
-      id: item.id,
-      kind: item.kind === "automatic" ? "auto" : "human",
-      start_offset: item.start_offset,
-      end_offset: item.end_offset,
-      text: item.text_verbatim,
-      active: !item.tombstoned_at,
-      created_at: item.created_at,
-    })),
-    comments,
-    neighbors: neighbors.map((edge) => ({
-      id: edge.id,
-      target_id: edge.target_id,
-      score: edge.weight ?? 0,
-      edge_type: edge.kind,
-    })),
-  };
+  return request<SignalDetail>("/signals/" + id);
 }
 
 export const api = {

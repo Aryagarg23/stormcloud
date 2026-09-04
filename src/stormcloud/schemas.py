@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, model_validator
@@ -117,6 +117,110 @@ class SignalView(ORM):
     created_at: datetime
 
 
+class SignalDocumentDetail(BaseModel):
+    id: UUID
+    document_id: UUID
+    canonical_url: str
+    title: str | None = None
+    media_type: str
+    content_hash: str
+    normalized_text: str
+    retrieved_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ResearcherExtractionDetail(BaseModel):
+    id: UUID
+    claims: list[dict[str, Any]] = Field(default_factory=list)
+    numbers: list[dict[str, Any]] = Field(default_factory=list)
+    dates: list[dict[str, Any]] = Field(default_factory=list)
+    model_profile: str
+    prompt_hash: str
+    config_hash: str
+    created_at: datetime
+
+
+class NlpArtifactDetail(BaseModel):
+    id: UUID
+    recipe_version: str
+    content_hash: str
+    entities: list[dict[str, Any]] = Field(default_factory=list)
+    dates: list[dict[str, Any]] = Field(default_factory=list)
+    numbers: list[dict[str, Any]] = Field(default_factory=list)
+    noun_phrases: list[str] = Field(default_factory=list)
+    sentence_count: int = 0
+    payload: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+
+class SignalHighlightDetail(BaseModel):
+    id: UUID
+    kind: Literal["human", "auto"]
+    start_offset: int
+    end_offset: int
+    text: str
+    active: bool
+    suppressed: bool
+    rationale: str | None = None
+    created_at: datetime
+
+
+class EvidenceSnapshotDetail(BaseModel):
+    id: UUID
+    revision: int
+    recipe_version: str
+    code_version: str
+    model_profile: str | None
+    prompt_hash: str | None
+    config_hash: str
+    input_highlight_ids: list[str] = Field(default_factory=list)
+    evidence_text: str
+    manifest: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+
+class EmbeddingDetail(BaseModel):
+    id: UUID
+    kind: str
+    model_profile: str
+    dimensions: int
+    config_hash: str
+    created_at: datetime
+
+
+class SignalNeighborDetail(BaseModel):
+    id: UUID
+    signal_id: UUID
+    target_signal_id: UUID
+    target_id: UUID
+    title: str
+    signal_text: str | None
+    score: float
+    edge_type: str
+    model_profile: str | None
+    revision: int
+
+
+class SignalStageAttemptDetail(BaseModel):
+    id: UUID
+    stage: str
+    status: str
+    attempt: int
+    error: str | None
+    error_detail: dict[str, Any] | None
+    retryable: bool
+    created_at: datetime
+    started_at: datetime | None
+    completed_at: datetime | None
+    next_retry_at: datetime | None
+
+
+class SignalFailureDetail(BaseModel):
+    stage: str | None
+    detail: str
+    retryable: bool
+
+
 class BundleItemCreate(BaseModel):
     url: HttpUrl
     description_verbatim: str | None = Field(default=None, max_length=100000)
@@ -213,6 +317,24 @@ class SignalCommentView(ORM):
     body: str
     author: CommentAuthor
     created_at: datetime
+
+
+class SignalDetail(SignalView):
+    canonical_url: str | None = None
+    title: str | None = None
+    document_id: UUID | None = None
+    document_version: SignalDocumentDetail | None = None
+    researcher_extraction: ResearcherExtractionDetail | None = None
+    nlp_artifact: NlpArtifactDetail | None = None
+    highlights: list[SignalHighlightDetail] = Field(default_factory=list)
+    comments: list[SignalCommentView] = Field(default_factory=list)
+    evidence_snapshots: list[EvidenceSnapshotDetail] = Field(default_factory=list)
+    embeddings: list[EmbeddingDetail] = Field(default_factory=list)
+    neighbors: list[SignalNeighborDetail] = Field(default_factory=list)
+    operation_id: UUID | None = None
+    stage_attempts: list[SignalStageAttemptDetail] = Field(default_factory=list)
+    failure: SignalFailureDetail | None = None
+    updated_at: datetime
 
 
 class EdgeView(ORM):

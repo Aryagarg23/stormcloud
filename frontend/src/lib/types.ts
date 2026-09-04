@@ -101,6 +101,7 @@ export interface DocumentVersion {
   id: string;
   canonical_url?: string;
   title?: string;
+  metadata?: Record<string, unknown>;
   media_type?: string;
   content_hash?: string;
   normalized_text: string;
@@ -112,6 +113,7 @@ export interface ResearcherExtraction {
   claims?: Array<{ text: string; start_offset?: number; end_offset?: number }>;
   entities?: Array<{ text: string; type?: string }>;
   numbers?: Array<{ text: string; value?: number; unit?: string }>;
+  dates?: Array<{ text: string; start?: number; end?: number }>;
   model_profile?: string;
   prompt_version?: string;
 }
@@ -121,6 +123,9 @@ export interface NlpArtifact {
   dates?: Array<{ text: string; normalized?: string }>;
   numbers?: Array<{ text: string; value?: number; unit?: string }>;
   noun_phrases?: string[];
+  payload?: {
+    features?: Array<{ kind: "entity" | "date" | "number" | "noun_phrase"; text: string }>;
+  };
   sentence_count?: number;
 }
 
@@ -131,6 +136,8 @@ export interface EvidenceSnapshot {
   created_at?: string;
   prompt_hash?: string;
   config_hash?: string;
+  evidence_text?: string;
+  manifest?: Record<string, unknown>;
   input_highlight_ids?: string[];
 }
 
@@ -148,6 +155,7 @@ export interface SimilarityEdge {
   target_signal_id?: string;
   target_id?: string;
   title?: string;
+  signal_text?: string;
   score: number;
   edge_type?: string;
 }

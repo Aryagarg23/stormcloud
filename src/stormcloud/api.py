@@ -55,6 +55,7 @@ from .schemas import (
     RefreshRequest,
     SignalCommentView,
     SignalCreate,
+    SignalDetail,
     SignalView,
     StageView,
     TokenPair,
@@ -71,6 +72,7 @@ from .security import (
     utcnow,
     verify_password,
 )
+from .signal_detail import build_signal_detail
 from .storage import ObjectStore
 
 router = APIRouter(prefix="/v1")
@@ -377,12 +379,12 @@ def list_signals(
     return list(db.scalars(query))
 
 
-@router.get("/signals/{signal_id}", response_model=SignalView)
+@router.get("/signals/{signal_id}", response_model=SignalDetail)
 def get_signal(signal_id: UUID, user: CurrentUser, db: DB):
     row = db.get(Signal, signal_id)
     if not row:
         fail(404, "Signal not found")
-    return row
+    return build_signal_detail(db, row)
 
 
 @router.post("/signals/{signal_id}/retry", response_model=Accepted, status_code=202)
