@@ -9,7 +9,7 @@ import os
 import re
 from datetime import UTC, datetime
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from aiohttp import web
 from secure_fetch import (
@@ -17,6 +17,7 @@ from secure_fetch import (
     begin_capture,
     get_capture,
     install_security_guards,
+    secure_fetch as fetch_public,
     validate_public_url,
 )
 
@@ -32,6 +33,9 @@ MAX_RAW_CAPTURE_BYTES = int(
     os.environ.get("EXTRACTOR_MAX_RAW_CAPTURE_BYTES", 8 * 1024 * 1024)
 )
 SENTENCE_RE = re.compile(r"[^.!?\n]+(?:[.!?]+(?=\s|$)|$)", re.MULTILINE)
+SCIENCEDIRECT_PII_RE = re.compile(
+    r"^https?://(?:www\.)?sciencedirect\.com/science/article/pii/([A-Za-z0-9]+)"
+)
 
 
 def _canonicalize(url: str) -> str:
@@ -106,6 +110,93 @@ def _segments(text: str) -> list[dict[str, Any]]:
         )
     result.sort(key=lambda row: (row["start"], row["end"], row["kind"]))
     return result
+
+
+async def _public_json(url: str) -> dict[str, Any] | None:
+    """Read bounded JSON through the same public-network guard as article fetches."""
+
+    try:
+        response = await fetch_public(url, headers={"Accept": "application/json"})
+        if response.status != 200:
+            return None
+        payload = await response.json()
+        return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
+
+
+def _rebuild_abstract(index: object) -> str:
+    if not isinstance(index, dict):
+        return ""
+    words: dict[int, str] = {}
+    for word, positions in index.items():
+        if not isinstance(word, str) or not isinstance(positions, list):
+            continue
+        for position in positions:
+            if isinstance(position, int) and position >= 0:
+                words[position] = word
+    return " ".join(words[position] for position in sorted(words))
+
+
+async def _open_science_direct_fallback(url: str, extracted: Any) -> Any | None:
+    """Recover an open article abstract without bypassing publisher controls."""
+
+    match = SCIENCEDIRECT_PII_RE.match(url)
+    if not match:
+        return None
+    pii = match.group(1)
+    elsevier = await _public_json(
+        f"https://api.elsevier.com/content/article/pii/{pii}"
+    )
+    core = (
+        elsevier.get("full-text-retrieval-response", {}).get("coredata", {})
+        if elsevier
+        else {}
+    )
+    if core.get("openaccessArticle") not in {True, "true", "1"}:
+        return None
+    doi = core.get("prism:doi")
+    if not isinstance(doi, str) or not doi:
+        return None
+    work_id = quote(f"https://doi.org/{doi}", safe="")
+    work = await _public_json(f"https://api.openalex.org/works/{work_id}")
+    if not work:
+        return None
+    abstract = _rebuild_abstract(work.get("abstract_inverted_index"))
+    if len(abstract) < 80:
+        return None
+
+    title = str(work.get("title") or core.get("dc:title") or "").strip()
+    authors = [
+        row.get("author", {}).get("display_name", "")
+        for row in work.get("authorships", [])
+        if isinstance(row, dict)
+    ]
+    author_line = ", ".join(name for name in authors if name)
+    published = str(work.get("publication_date") or core.get("prism:coverDate") or "")
+    parts = [title]
+    if author_line:
+        parts.append(f"Authors: {author_line}")
+    if published:
+        parts.append(f"Published: {published}")
+    parts.extend(["Abstract", abstract])
+
+    extracted.title = title
+    extracted.author = author_line
+    extracted.published = published
+    extracted.text = "\n\n".join(part for part in parts if part)
+    extracted.metadata.update(
+        {
+            "extraction_status": "partial",
+            "fallback": "openalex:abstract",
+            "fallback_reason": "publisher page blocked automated retrieval",
+            "doi": doi,
+            "open_access": True,
+            "license": core.get("openaccessUserLicense"),
+        }
+    )
+    extracted.error = "Full article unavailable; using the indexed open-access abstract."
+    return extracted
 
 
 def _failure(
@@ -196,6 +287,9 @@ async def _fetch(request: web.Request) -> web.Response:
         return web.json_response(
             _failure(request_id, "EXTRACTOR_UNAVAILABLE", str(exc), retryable=True), status=502
         )
+
+    if extracted.error and not (extracted.text or extracted.transcript):
+        extracted = await _open_science_direct_fallback(url, extracted) or extracted
 
     if extracted.error and not (extracted.text or extracted.transcript):
         blocked = extracted.metadata.get("extraction_status") == "blocked"
