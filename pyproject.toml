@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stormcloud"
+version = "0.1.0"
+description = "Distributed provenance-preserving research signal backend"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic==1.16.5",
+  "argon2-cffi==25.1.0",
+  "boto3==1.40.28",
+  "email-validator==2.3.0",
+  "fastapi==0.116.1",
+  "httpx==0.28.1",
+  "jsonschema==4.25.1",
+  "nats-py==2.11.0",
+  "pgvector==0.4.1",
+  "prometheus-client==0.22.1",
+  "psycopg[binary]==3.2.10",
+  "pydantic-settings==2.10.1",
+  "PyJWT[crypto]==2.10.1",
+  "PyYAML==6.0.2",
+  "SQLAlchemy==2.0.43",
+  "structlog==25.4.0",
+  "typer==0.17.4",
+  "uvicorn[standard]==0.35.0"
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.4.2", "pytest-asyncio==1.1.0", "pytest-cov==6.2.1",
+       "respx==0.22.0", "ruff==0.12.11"]
+
+[project.scripts]
+stormcloud = "stormcloud.cli:app"
+stormcloud-worker = "stormcloud.worker:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

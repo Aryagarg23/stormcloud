@@ -1,0 +1,45 @@
+version: 1
+profiles:
+  gemma:
+    kind: chat
+    base_url: "${GEMMA_BASE_URL:-http://100.89.196.15:8000/v1}"
+    api_key_env: GEMMA_API_KEY
+    model: "${GEMMA_MODEL:-dhruvil237/gemma-4-26B-A4B-it-W4A16}"
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 2048
+    timeout_seconds: 120
+    retries: 2
+    concurrency: 2
+    batch_size: 1
+  qwen-small:
+    kind: embedding
+    base_url: "${QWEN_SMALL_BASE_URL:-http://100.89.196.15:8081/v1}"
+    model: "${QWEN_SMALL_MODEL:-Qwen3-Embedding-0.6B-Q8_0}"
+    dimensions: 1024
+    pooling: last
+    query_prefix: "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: "
+    timeout_seconds: 120
+    retries: 2
+    concurrency: 4
+    batch_size: 32
+  qwen-quality:
+    kind: embedding
+    base_url: "${QWEN_QUALITY_BASE_URL:-http://100.89.196.15:8080/v1}"
+    model: "${QWEN_QUALITY_MODEL:-Qwen3-Embedding-4B-Q8_0}"
+    dimensions: 2560
+    pooling: last
+    query_prefix: "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: "
+    timeout_seconds: 180
+    retries: 2
+    concurrency: 2
+    batch_size: 8
+tasks:
+  extraction: {profile: gemma, prompt_version: v1}
+  highlighting: {profile: gemma, prompt_version: v1}
+  embed_researcher: {profile: qwen-small}
+  embed_evidence: {profile: qwen-small}
+  embed_source: {profile: qwen-small}
+  embed_bundle: {profile: qwen-small}
+  embed_query: {profile: qwen-small}
+  embed_quality: {profile: qwen-quality}

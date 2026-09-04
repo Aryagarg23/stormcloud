@@ -1,0 +1,149 @@
+name: stormcloud
+
+x-app: &app
+  build:
+    context: .
+  image: stormcloud-backend:0.1.0
+  env_file: .env
+  restart: unless-stopped
+  networks: [stormcloud]
+  depends_on:
+    postgres: {condition: service_healthy}
+    nats: {condition: service_healthy}
+    minio: {condition: service_healthy}
+
+x-worker: &worker
+  <<: *app
+  command: ["stormcloud-worker"]
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17-bookworm
+    profiles: [infra, full, dev]
+    environment:
+      POSTGRES_DB: stormcloud
+      POSTGRES_USER: stormcloud
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    networks: [stormcloud]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stormcloud -d stormcloud"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  nats:
+    image: nats:2.11.8-alpine
+    profiles: [infra, full, dev]
+    command: ["-js", "-sd", "/data", "-m", "8222", "--user", "${NATS_USER:-stormcloud}", "--pass", "${NATS_PASSWORD:-change-me-nats}"]
+    volumes: [nats-data:/data]
+    networks: [stormcloud]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    profiles: [infra, full, dev]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${STORMCLOUD_S3_ACCESS_KEY:-stormcloud}
+      MINIO_ROOT_PASSWORD: ${STORMCLOUD_S3_SECRET_KEY:-change-me-object-store}
+    volumes: [minio-data:/data]
+    networks: [stormcloud]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    <<: *app
+    profiles: [full, dev, init]
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+
+  init-buckets:
+    <<: *app
+    profiles: [full, dev, init]
+    restart: "no"
+    command: ["stormcloud", "init-buckets"]
+
+  bootstrap-admin:
+    <<: *app
+    profiles: [init]
+    restart: "no"
+    command: ["stormcloud", "bootstrap-admin"]
+
+  api:
+    <<: *app
+    profiles: [core, full, dev]
+    ports: ["${STORMCLOUD_API_PORT:-8080}:8080"]
+    command: ["uvicorn", "stormcloud.main:app", "--host", "0.0.0.0", "--port", "8080"]
+
+  model-gateway:
+    <<: *app
+    profiles: [core, full, dev]
+    command: ["uvicorn", "stormcloud.model_gateway:app", "--host", "0.0.0.0", "--port", "8085"]
+
+  pipeline-controller:
+    <<: *worker
+    profiles: [workers, full, dev]
+    environment: {STORMCLOUD_WORKER_ROLE: controller}
+
+  fetch-worker:
+    <<: *worker
+    profiles: [workers, full, dev]
+    environment: {STORMCLOUD_WORKER_ROLE: fetch}
+
+  nlp-worker:
+    <<: *worker
+    profiles: [workers, full, dev]
+    environment: {STORMCLOUD_WORKER_ROLE: nlp}
+
+  llm-worker:
+    <<: *worker
+    profiles: [workers, full, dev]
+    environment: {STORMCLOUD_WORKER_ROLE: llm}
+
+  embedding-worker:
+    <<: *worker
+    profiles: [workers, full, dev]
+    environment: {STORMCLOUD_WORKER_ROLE: embedding}
+
+  graph-worker:
+    <<: *worker
+    profiles: [workers, full, dev]
+    environment: {STORMCLOUD_WORKER_ROLE: graph}
+
+  mailer:
+    <<: *worker
+    profiles: [workers, full, dev]
+    environment: {STORMCLOUD_WORKER_ROLE: mailer}
+
+  fake-fetcher:
+    <<: *app
+    profiles: [dev]
+    depends_on: {}
+    command: ["uvicorn", "stormcloud.fake_fetcher:app", "--host", "0.0.0.0", "--port", "8090"]
+
+  mailpit:
+    image: axllent/mailpit:v1.27.5
+    profiles: [dev]
+    networks: [stormcloud]
+    ports: ["8025:8025"]
+    restart: unless-stopped
+
+networks:
+  stormcloud:
+    name: stormcloud
+
+volumes:
+  postgres-data:
+  nats-data:
+  minio-data:

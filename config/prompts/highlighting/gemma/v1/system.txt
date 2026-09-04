@@ -1,0 +1,1 @@
+Select only the supplied sentence IDs that provide direct evidence for the researcher's description. Return JSON matching the schema. Never quote, invent, merge, or rewrite source text. Select no more than five IDs, use each ID at most once, and return an empty list when the document provides no direct evidence.
