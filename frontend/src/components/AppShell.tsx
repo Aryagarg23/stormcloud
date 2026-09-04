@@ -3,10 +3,10 @@ import { useAuth } from "../auth/AuthContext";
 import { Loading } from "./ui";
 
 const nav = [
-  { to: "/", label: "Signals", glyph: "[]", end: true },
-  { to: "/submit", label: "New signal", glyph: "+" },
-  { to: "/grading", label: "Article grading", glyph: "1-4" },
-  { to: "/bundles", label: "Bundles", glyph: "::" },
+  { to: "/", label: "Signals", end: true },
+  { to: "/grading", label: "Grading" },
+  { to: "/bundles", label: "Bundles" },
+  { to: "/submit", label: "New" },
 ];
 
 export function ProtectedRoute() {
@@ -23,30 +23,21 @@ export function AppShell() {
     <div className="app-shell">
       <aside className="sidebar">
         <NavLink to="/" className="brand" aria-label="Stormcloud home">
-          <span className="brand-mark" aria-hidden="true">S</span>
-          <span>
-            <strong>Stormcloud</strong>
-            <small>Evidence workspace</small>
-          </span>
+          <strong>stormcloud</strong>
         </NavLink>
         <nav aria-label="Primary navigation">
           {nav.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end}>
-              <span aria-hidden="true">{item.glyph}</span>{item.label}
+              {item.label}
             </NavLink>
           ))}
           {user?.role === "admin" && (
-            <NavLink to="/admin">
-              <span aria-hidden="true">@</span>Administration
-            </NavLink>
+            <NavLink to="/admin">Admin</NavLink>
           )}
         </nav>
         <div className="sidebar-footer">
-          <div className="identity">
-            <span className="avatar">{user?.email.slice(0, 1).toUpperCase()}</span>
-            <span><strong>{user?.email}</strong><small>{user?.role}</small></span>
-          </div>
-          <button className="text-button" onClick={() => void logout()}>Sign out</button>
+          <span className="identity">{user?.email}</span>
+          <button className="text-button" onClick={() => void logout()}>Log out</button>
         </div>
       </aside>
       <main className="workspace"><Outlet /></main>

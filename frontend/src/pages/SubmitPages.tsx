@@ -40,10 +40,8 @@ export function SubmitSignalPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Individual ingestion"
-        title="Capture a signal"
-        description="Record exactly why this source matters to you. Your words remain immutable and separate from later machine analysis."
-        actions={<Link className="button" to="/bundles/new">Create a bundle instead</Link>}
+        title="New signal"
+        actions={<Link className="button" to="/bundles/new">New bundle</Link>}
       />
       <div className="form-layout">
         <Panel title="Source and observation" label={<span className="data-label data-label-human">Human input</span>}>
@@ -137,9 +135,7 @@ export function SubmitBundlePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Bundle ingestion"
-        title="Build a source bundle"
-        description="Group two or more signals around a thesis. Order can carry explicit meaning; machine similarity never replaces it."
+        title="New bundle"
       />
       {Boolean(error) && <ErrorNotice error={error} />}
       <form className="bundle-form" onSubmit={submit}>

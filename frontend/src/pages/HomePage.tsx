@@ -17,9 +17,7 @@ export function HomePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Research ledger"
         title="Signals"
-        description="Each signal preserves your original observation while its source and machine-derived evidence evolve independently."
         actions={<Link className="button button-primary" to="/submit">New signal</Link>}
       />
       <div className="toolbar">
@@ -29,8 +27,8 @@ export function HomePage() {
       {loading && <Loading label="Loading signals" />}
       {Boolean(error) && <ErrorNotice error={error} onRetry={() => void reload()} />}
       {!loading && !error && !data?.items.length && (
-        <EmptyState title="No signals yet" action={<Link to="/submit" className="button button-primary">Capture the first signal</Link>}>
-          Submit a source and your verbatim description. Stormcloud will build the evidence record asynchronously.
+        <EmptyState title="No signals" action={<Link to="/submit" className="button button-primary">New signal</Link>}>
+          No records found.
         </EmptyState>
       )}
       {!!data?.items.length && (
@@ -55,7 +53,6 @@ function SignalCard({ signal }: { signal: SignalSummary }) {
       <h2>{signal.title || signal.description_verbatim.slice(0, 90)}</h2>
       <p>{signal.description_verbatim}</p>
       <div className="card-footer">
-        <span>Human input</span>
         <time>{formatDate(signal.created_at)}</time>
       </div>
     </Link>

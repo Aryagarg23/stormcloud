@@ -41,7 +41,7 @@ export function OperationPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Asynchronous operation" title="Building the evidence record" description="You can leave this page. Processing continues in the background." />
+      <PageHeader title="Processing" />
       {Boolean(error) && <ErrorNotice error={error} />}
       {!operation && !error && <Loading label="Checking operation" />}
       {operation && (

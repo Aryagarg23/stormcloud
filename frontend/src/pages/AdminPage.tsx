@@ -46,7 +46,7 @@ export function AdminPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Workspace administration" title="Members & invitations" description="Stormcloud has no public registration. Every account begins with a time-limited, single-use invitation." />
+      <PageHeader title="Members & invitations" />
       <div className="admin-grid">
         <Panel title="Invite a member">
           {Boolean(error) && <ErrorNotice error={error} />}

@@ -292,12 +292,10 @@ export function GradingPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Shared workspace"
         title="Article grading"
-        description="Triage the team’s evidence into four grades. Drag cards between rows, use the controls on each card, or focus a card and press 1–4. Press U to return it to the rail."
         actions={
           <button className="button button-small" onClick={() => void reload()} disabled={loading}>
-            {loading ? "Refreshing…" : "Refresh board"}
+            {loading ? "Refreshing…" : "Refresh"}
           </button>
         }
       />

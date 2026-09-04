@@ -21,9 +21,7 @@ export function BundlesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Human-defined context"
         title="Bundles"
-        description="Curated groups retain their explicit sequence separately from machine-generated relationships."
         actions={<Link className="button button-primary" to="/bundles/new">New bundle</Link>}
       />
       {resource.loading && <Loading label="Loading bundles" />}
@@ -69,9 +67,7 @@ export function BundlePage() {
   return (
     <>
       <PageHeader
-        eyebrow={bundle.ordered ? "Ordered bundle" : "Unordered bundle"}
         title={bundle.thesis || "Untitled source bundle"}
-        description={bundle.ordered ? "Adjacent items are connected by explicit human NEXT edges." : "Items share context without an asserted sequence."}
         actions={<StatusBadge status={bundle.status} />}
       />
       <Pipeline status={bundle.status} />

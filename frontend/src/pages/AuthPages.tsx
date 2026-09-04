@@ -31,23 +31,12 @@ export function LoginPage() {
 
   return (
     <main className="auth-layout">
-      <section className="auth-story">
-        <span className="brand-mark large" aria-hidden="true">S</span>
-        <p className="eyebrow">Private research infrastructure</p>
-        <h1>Trace ideas back to their evidence.</h1>
-        <p>Stormcloud keeps what you wrote, what the source said, and what machines inferred as distinct, versioned layers.</p>
-        <div className="trust-list">
-          <span>Verbatim researcher input</span>
-          <span>Immutable source versions</span>
-          <span>Reproducible machine analysis</span>
-        </div>
-      </section>
       <section className="auth-card">
-        <div>
-          <p className="eyebrow">Welcome back</p>
-          <h2>Sign in</h2>
-          <p className="muted">Access is limited to invited members.</p>
-        </div>
+        <header className="auth-header">
+          <strong>stormcloud</strong>
+          <span>internal</span>
+        </header>
+        <h1>Log in</h1>
         {Boolean(error) && <ErrorNotice error={error} />}
         <form onSubmit={submit}>
           <label>Email<input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
@@ -96,12 +85,8 @@ export function AcceptInvitePage() {
   return (
     <main className="auth-layout single">
       <section className="auth-card">
-        <div>
-          <span className="brand-mark" aria-hidden="true">S</span>
-          <p className="eyebrow">Invitation</p>
-          <h1>Join Stormcloud</h1>
-          <p className="muted">Create a password to activate your workspace account.</p>
-        </div>
+        <header className="auth-header"><strong>stormcloud</strong><span>invitation</span></header>
+        <h1>Set password</h1>
         {Boolean(error) && <ErrorNotice error={error} />}
         <form onSubmit={submit}>
           <label>Password<input type="password" autoComplete="new-password" minLength={10} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
